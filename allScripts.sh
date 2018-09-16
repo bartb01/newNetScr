@@ -1,6 +1,9 @@
 #!/bin/bash
 
 #search for ZXCV
+# ZXCV change restrictions executeable e.g. chmod 755
+# ZXCV see if possible to lose docker-compose-e2e.yaml --> docker-compose-cli can be removed instead? cli not for produciton?
+
 #----------------------------------------------------[(1)Prerequisites]-------------------------------------------------------------
 
 #Install prerequisites https://hyperledger-fabric.readthedocs.io/en/release-1.2/prereqs.html 
@@ -14,14 +17,15 @@
 
 # if fabric-samples directory exists, script has already been run. 
 # ZXCV check for binaries, docker images and samples seperately 
+# ZXCV only need fabric-samples/bin, skip the rest?
 ls fabric-samples/
-if [ "$?" -nq 0 ]; then
+if [ "$?" -ne 0 ]; then
 #ZXCV bash -s gives a parameter to the script? fabric version...
 curl -sSL http://bit.ly/2ysbOFE | bash -s 1.2.0 
 fi
 #ZXCV cURL -sSL:
 #-s : silent mode
-#-S : force to show errors
+#-S : force show errors
 #-L : location, follow redirects
 
 # ZXCV skip these two lines:
@@ -31,11 +35,12 @@ fi
 # set to path environment variable (test if path is known with 'which cryptogen' to show the path to cryptogen)
 # export PATH=$PATH:/home/   <PATH TO DOWNLOAD LOCATION>   /bin
 which cryptogen
-if [ "$?" -eq 0 ]; then
+if [ "$?" -ne 0 ]; then
 export PATH=$PATH:$(pwd)/fabric-samples/bin
 fi
 
 #---------------------------------------------------[(3)Add/change files]-----------------------------------------------------------
+
 # required: if using cryptogen tool (fabric-ca is better), crypto-config.yaml is needed (containing network topology)
 # required: docker-compose-e2e-template.yaml, which is used to create docker-compose-e2e.yaml, containing the right keys
 
@@ -222,4 +227,77 @@ exit 1
 fi
 echo "all has been generated"
 
-#---------------------------------------------------[(5)Add/change files]-----------------------------------------------------------
+#--------------------------------------------------[(5)Check prerequisites]---------------------------------------------------------
+
+# Versions of fabric known not to work with this release of first-network
+BLACKLISTED_VERSIONS="^1\.0\. ^1\.1\.0-preview ^1\.1\.0-alpha"
+
+# Do some basic sanity checking to make sure that the appropriate versions of fabric
+# binaries/images are available.
+
+# Note, we check configtxlator externally because it does not require a config file, and peer in the
+# docker image because of FAB-8551 that makes configtxlator return 'development version' in docker
+IMAGETAG=latest
+LOCAL_VERSION=$(configtxlator version | sed -ne 's/ Version: //p')
+DOCKER_IMAGE_VERSION=$(docker run --rm hyperledger/fabric-tools:$IMAGETAG peer version | sed -ne 's/ Version: //p' | head -1)
+
+echo "LOCAL_VERSION=$LOCAL_VERSION"
+echo "DOCKER_IMAGE_VERSION=$DOCKER_IMAGE_VERSION"
+
+if [ "$LOCAL_VERSION" != "$DOCKER_IMAGE_VERSION" ]; then
+echo "=================== WARNING ==================="
+echo "  Local fabric binaries and docker images are  "
+echo "  out of  sync. This may cause problems.       "
+echo "==============================================="
+fi
+
+for UNSUPPORTED_VERSION in $BLACKLISTED_VERSIONS; do
+echo "$LOCAL_VERSION" | grep -q $UNSUPPORTED_VERSION
+if [ $? -eq 0 ]; then
+    echo "ERROR! Local Fabric binary version of $LOCAL_VERSION does not match this newer version of BYFN and is unsupported. Either move to a later version of Fabric or checkout an earlier version of fabric-samples."
+    exit 1
+fi
+
+echo "$DOCKER_IMAGE_VERSION" | grep -q $UNSUPPORTED_VERSION
+if [ $? -eq 0 ]; then
+    echo "ERROR! Fabric Docker image version of $DOCKER_IMAGE_VERSION does not match this newer version of BYFN and is unsupported. Either move to a later version of Fabric or checkout an earlier version of fabric-samples."
+    exit 1
+fi
+done
+
+#-----------------------------------------------------[(6)Start network]------------------------------------------------------------
+
+# Generate the needed certificates, the genesis block and start the network.
+# ZXCV database standard goleveldb, can switch to couchdb
+IF_COUCHDB=goleveldb
+COMPOSE_FILE=docker-compose-cli.yaml
+
+if [ "${IF_COUCHDB}" == "couchdb" ]; then
+IMAGE_TAG=$IMAGETAG docker-compose -f $COMPOSE_FILE -f docker-compose-couch.yaml up -d 2>&1
+else
+IMAGE_TAG=$IMAGETAG docker-compose -f $COMPOSE_FILE up -d 2>&1
+fi
+if [ $? -ne 0 ]; then
+echo "ERROR !!!! Unable to start network"
+exit 1
+fi
+
+# default delay between commands
+CLI_DELAY=3
+# language can be either node or golang
+LANGUAGE=node
+# 
+CLI_TIMEOUT=10
+# verbose mode (for debugging)
+VERBOSE=false
+# now run the end to end script
+# ZXCV change path scripts/script.sh 
+docker exec cli scripts/script.sh $CHANNEL_NAME $CLI_DELAY $LANGUAGE $CLI_TIMEOUT $VERBOSE
+if [ $? -ne 0 ]; then
+echo "ERROR !!!! Test failed"
+exit 1
+fi
+
+#-----------------------------------------------------[(7)Stop network]-------------------------------------------------------------
+
+# run ./stop.sh
