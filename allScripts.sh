@@ -10,6 +10,33 @@
 
 #-------------------------------------------[(2)Samples, binaries, docker images]---------------------------------------------------
 
+# install curl linux
+which curl
+if [ "$?" -ne 0 ]; then
+sudo apt-get install curl
+fi
+
+# ZXCV install node and npm
+
+# install docker linux
+which docker
+if [ "$?" -ne 0 ]; then
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+sudo apt-get update
+apt-cache policy docker-ce
+sudo apt-get install -y docker-ce
+# ZXCV log out and log in again or reboot is required
+sudo usermod -a -G docker $USER
+fi
+
+# install docker-compose linux
+which docker-compose
+if [ "$?" -ne 0 ]; then
+sudo curl -L "https://github.com/docker/compose/releases/download/1.22.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+fi
+
 # Clone hyperledger/fabric-samples in current directory
 # Checkout approriate version tag, 
 # Install binaries config files for version specified in root of fabric-samples repo
