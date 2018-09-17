@@ -17,6 +17,11 @@ sudo apt-get install curl
 fi
 
 # ZXCV install node and npm
+which node
+if [ "$?" -ne 0 ]; then
+curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
+sudo apt-get install -y nodejs
+fi
 
 # install docker linux
 which docker

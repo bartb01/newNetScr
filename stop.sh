@@ -28,3 +28,7 @@ fi
 rm -rf channel-artifacts/*.block channel-artifacts/*.tx crypto-config ./org3-artifacts/crypto-config/ channel-artifacts/org3.json
 # remove the docker-compose yaml file that was customized to the example
 rm -f docker-compose-e2e.yaml
+
+
+# to remove all stopped docker containers (also no hlf related)
+# docker ps -qa | xargs docker rm
