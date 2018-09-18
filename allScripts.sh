@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#search for ZXCV
+# Note: 'ZXCV' are comments for/by Bart, you can skip this.
 # ZXCV change restrictions executeable e.g. chmod 755
 # ZXCV see if possible to lose docker-compose-e2e.yaml --> docker-compose-cli can be removed instead? cli not for produciton?
 
@@ -16,7 +16,7 @@ if [ "$?" -ne 0 ]; then
 sudo apt-get install curl
 fi
 
-# ZXCV install node and npm
+# ZXCV install node and npm, check versions
 which node
 if [ "$?" -ne 0 ]; then
 curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
@@ -31,7 +31,7 @@ sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubun
 sudo apt-get update
 apt-cache policy docker-ce
 sudo apt-get install -y docker-ce
-# ZXCV log out and log in again or reboot is required
+# ZXCV log out and log in again or reboot is required?
 sudo usermod -a -G docker $USER
 fi
 
@@ -52,7 +52,7 @@ fi
 # ZXCV only need fabric-samples/bin, skip the rest?
 ls fabric-samples/
 if [ "$?" -ne 0 ]; then
-#ZXCV bash -s gives a parameter to the script? fabric version...
+#ZXCV bash -s for parameter fabric version
 curl -sSL http://bit.ly/2ysbOFE | bash -s 1.2.0 
 fi
 #ZXCV cURL -sSL:
@@ -140,7 +140,7 @@ cp docker-compose-e2e-template.yaml docker-compose-e2e.yaml
 
 # The next steps will replace the template's contents with the
 # actual values of the private key file names for the two CAs.
-# ZXCV this is only automated for two orgs with specific name...
+# ZXCV only automated for two orgs with specific name...
 CURRENT_DIR=$PWD
 cd crypto-config/peerOrganizations/org1.example.com/ca/
 PRIV_KEY=$(ls *_sk)
